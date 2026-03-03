@@ -18,6 +18,7 @@ alloy-rpc-types = "0.5"
 alloy-sol-types = "0.5"
 
 # Kafka
+# 編譯需 cmake（或系統安裝 librdkafka 後改用 default-features）
 rdkafka = { version = "0.36", features = ["cmake-build"] }
 
 # HTTP 與 JSON

@@ -43,12 +43,18 @@ func New(rdb *redis.Client, log *zap.Logger, opts Options) *Manager {
 // Allow 檢查是否允許執行此機會（餘額、回撤）
 func (m *Manager) Allow(ctx context.Context, opp kafka_consumer.Opportunity) bool {
 	m.mu.RLock()
-	defer m.mu.RUnlock()
+	maxPct := m.opts.MaxDrawdownPct
+	m.mu.RUnlock()
+
+	// 若 Redis 有覆寫最大回撤則採用（來自 POST /api/settings）
+	if p, err := m.rdb.Get(ctx, redisKeyMaxDrawdownPct).Float64(); err == nil && p > 0 {
+		maxPct = p
+	}
 
 	// 從 Redis 讀取當前回撤（若有的話）
 	pct, err := m.rdb.HGet(ctx, redisKeyDrawdown, "pct").Float64()
-	if err == nil && pct >= m.opts.MaxDrawdownPct {
-		m.log.Warn("rejected: max drawdown exceeded", zap.Float64("current_pct", pct))
+	if err == nil && pct >= maxPct {
+		m.log.Warn("rejected: max drawdown exceeded", zap.Float64("current_pct", pct), zap.Float64("max_pct", maxPct))
 		return false
 	}
 
@@ -65,8 +71,11 @@ func (m *Manager) RecordResult(ctx context.Context, wallet string, profitLossWei
 	return err
 }
 
-// GetMaxDrawdownPct 回傳設定的最大回撤比例
+// GetMaxDrawdownPct 回傳設定的最大回撤比例（優先從 Redis 讀取）
 func (m *Manager) GetMaxDrawdownPct() float64 {
+	if p, err := m.rdb.Get(context.Background(), redisKeyMaxDrawdownPct).Float64(); err == nil && p > 0 {
+		return p
+	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.opts.MaxDrawdownPct

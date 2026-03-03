@@ -56,6 +56,28 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"max_drawdown_pct": rm.GetMaxDrawdownPct()})
 	})
 
+	// 設定寫入 Redis，供風控與前端讀取
+	r.POST("/api/settings", func(c *gin.Context) {
+		var body struct {
+			Wallet         string   `json:"wallet"`
+			MinBalanceWei  string   `json:"min_balance_wei"`
+			MaxDrawdownPct *float64 `json:"max_drawdown_pct"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx := c.Request.Context()
+		if body.Wallet != "" {
+			rdb.HSet(ctx, "house-edge:wallet:"+body.Wallet, "min_balance_wei", body.MinBalanceWei)
+		}
+		if body.MaxDrawdownPct != nil {
+			rdb.Set(ctx, "house-edge:max_drawdown_pct", *body.MaxDrawdownPct, 0)
+			// 可選：更新 risk_manager 內部 opts（目前為記憶體值，重啟後以 Redis 為準需在 New 時讀取）
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
