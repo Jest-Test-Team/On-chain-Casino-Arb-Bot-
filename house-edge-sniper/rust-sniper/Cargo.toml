@@ -1,0 +1,32 @@
+[package]
+name = "house-edge-sniper"
+version = "0.1.0"
+edition = "2021"
+description = "前線監聽與執行 - Mempool 監聽、EV 計算、Flashbots 發送、Kafka 生產者"
+
+[dependencies]
+# 非同步與網路
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+futures-util = "0.3"
+tower = "0.4"
+
+# 區塊鏈 (Alloy - 新一代 ethers 替代)
+alloy-primitives = "0.5"
+alloy-provider = { version = "0.5", features = ["ws"] }
+alloy-rpc-types = "0.5"
+alloy-sol-types = "0.5"
+
+# Kafka
+rdkafka = { version = "0.36", features = ["cmake-build"] }
+
+# HTTP 與 JSON
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 工具
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
